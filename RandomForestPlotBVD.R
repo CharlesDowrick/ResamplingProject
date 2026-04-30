@@ -51,3 +51,18 @@ p <- ggplot(plot_data, aes(x = m_try, y = Error, color = Component, group = Comp
 
 # Display plot
 print(p)
+
+# MSE curve
+p_mse <- ggplot(rf_results, aes(x = m_try, y = MSE)) +
+  geom_line(size = 1.2, color = "#1f77b4") +
+  geom_point(size = 2.5, color = "#1f77b4") +
+  scale_x_continuous(breaks = seq(0, 80, by = 10)) +
+  labs(
+    title = "Random Forest: MSE",
+    subtitle = "Ames Housing",
+    x = expression(m[try]),
+    y = "MSE"
+  ) +
+  theme_minimal()
+
+print(p_mse)
