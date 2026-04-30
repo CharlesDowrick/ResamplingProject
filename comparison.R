@@ -1,0 +1,134 @@
+library(rpart)
+library(randomForest)
+library(dplyr)
+library(modeldata)
+
+set.seed(123)
+
+# Load data
+data(ames, package = "modeldata")
+
+# Setup
+predictor_cols <- setdiff(names(ames), "Sale_Price")
+n_predictors <- length(predictor_cols)
+n_folds <- 10
+n_trees <- 100
+
+# 10-fold CV - fixed fold assignments
+folds <- sample(rep(1:n_folds, length.out = nrow(ames)))
+
+# Function to compute metrics
+compute_metrics <- function(actual, predicted) {
+  residuals <- actual - predicted
+  mse <- mean(residuals^2)
+  rmse <- sqrt(mse)
+  mae <- mean(abs(residuals))
+  mape <- mean(abs(residuals / actual)) * 100
+  return(c(MSE = mse, RMSE = rmse, MAE = mae, MAPE = mape))
+}
+
+# Initialize results matrices
+tree_results <- matrix(NA, nrow = n_folds, ncol = 4)
+bag_results <- matrix(NA, nrow = n_folds, ncol = 4)
+rf_results <- matrix(NA, nrow = n_folds, ncol = 4)
+colnames(tree_results) <- colnames(bag_results) <- colnames(rf_results) <- c("MSE", "RMSE", "MAE", "MAPE")
+
+# 10-fold CV loop
+for (i in 1:n_folds) {
+  train <- ames[folds != i, ]
+  test <- ames[folds == i, ]
+  
+  # Decision Tree
+  tree <- rpart(Sale_Price ~ ., data = train[, c(predictor_cols, "Sale_Price")])
+  pred_tree <- predict(tree, test[, predictor_cols])
+  tree_results[i, ] <- compute_metrics(test$Sale_Price, pred_tree)
+  
+  # Bagging (mtry = all predictors)
+  bag <- randomForest(Sale_Price ~ ., data = train[, c(predictor_cols, "Sale_Price")],
+                      ntree = n_trees, mtry = n_predictors)
+  pred_bag <- predict(bag, test[, predictor_cols])
+  bag_results[i, ] <- compute_metrics(test$Sale_Price, pred_bag)
+  
+  # Random Forest (mtry = 31)
+  rf <- randomForest(Sale_Price ~ ., data = train[, c(predictor_cols, "Sale_Price")],
+                     ntree = n_trees, mtry = 31)
+  pred_rf <- predict(rf, test[, predictor_cols])
+  rf_results[i, ] <- compute_metrics(test$Sale_Price, pred_rf)
+}
+
+# Convert to data frames
+tree_df <- as.data.frame(tree_results)
+bag_df <- as.data.frame(bag_results)
+rf_df <- as.data.frame(rf_results)
+
+# Add Fold column
+tree_df$Fold <- 1:n_folds
+bag_df$Fold <- 1:n_folds
+rf_df$Fold <- 1:n_folds
+
+# Fold table
+fold_table <- data.frame(
+  Fold = 1:n_folds,
+  Tree_MSE = round(tree_df$MSE, 0), Tree_RMSE = round(tree_df$RMSE, 0),
+  Tree_MAE = round(tree_df$MAE, 0), Tree_MAPE = round(tree_df$MAPE, 1),
+  Bagging_MSE = round(bag_df$MSE, 0), Bagging_RMSE = round(bag_df$RMSE, 0),
+  Bagging_MAE = round(bag_df$MAE, 0), Bagging_MAPE = round(bag_df$MAPE, 1),
+  RF_MSE = round(rf_df$MSE, 0), RF_RMSE = round(rf_df$RMSE, 0),
+  RF_MAE = round(rf_df$MAE, 0), RF_MAPE = round(rf_df$MAPE, 1)
+)
+print("=== FOLD RESULTS ===")
+print(fold_table)
+
+# Summary table
+summary_table <- data.frame(
+  Model = c("Decision Tree", "Bagging", "Random Forest"),
+  MSE = c(paste0(round(mean(tree_df$MSE), 0), " ± ", round(sd(tree_df$MSE), 0)),
+          paste0(round(mean(bag_df$MSE), 0), " ± ", round(sd(bag_df$MSE), 0)),
+          paste0(round(mean(rf_df$MSE), 0), " ± ", round(sd(rf_df$MSE), 0))),
+  RMSE = c(paste0(round(mean(tree_df$RMSE), 0), " ± ", round(sd(tree_df$RMSE), 0)),
+           paste0(round(mean(bag_df$RMSE), 0), " ± ", round(sd(bag_df$RMSE), 0)),
+           paste0(round(mean(rf_df$RMSE), 0), " ± ", round(sd(rf_df$RMSE), 0))),
+  MAE = c(paste0(round(mean(tree_df$MAE), 0), " ± ", round(sd(tree_df$MAE), 0)),
+          paste0(round(mean(bag_df$MAE), 0), " ± ", round(sd(bag_df$MAE), 0)),
+          paste0(round(mean(rf_df$MAE), 0), " ± ", round(sd(rf_df$MAE), 0))),
+  MAPE = c(paste0(round(mean(tree_df$MAPE), 1), " ± ", round(sd(tree_df$MAPE), 1)),
+           paste0(round(mean(bag_df$MAPE), 1), " ± ", round(sd(bag_df$MAPE), 1)),
+           paste0(round(mean(rf_df$MAPE), 1), " ± ", round(sd(rf_df$MAPE), 1)))
+)
+print("=== SUMMARY STATISTICS ===")
+print(summary_table)
+
+# Wilcoxon signed-rank tests (paired on the 10 folds)
+wilcox_tree_bag <- wilcox.test(tree_df$MSE, bag_df$MSE, paired = TRUE)
+wilcox_bag_rf <- wilcox.test(bag_df$MSE, rf_df$MSE, paired = TRUE)
+wilcox_tree_rf <- wilcox.test(tree_df$MSE, rf_df$MSE, paired = TRUE)
+
+# Wilcoxon results table
+wilcox_results <- data.frame(
+  Comparison = c("Tree vs Bagging", "Bagging vs RF", "Tree vs RF"),
+  p_value = round(c(wilcox_tree_bag$p.value, wilcox_bag_rf$p.value, wilcox_tree_rf$p.value), 4),
+  Significant = ifelse(c(wilcox_tree_bag$p.value, wilcox_bag_rf$p.value, wilcox_tree_rf$p.value) < 0.05, "YES ✓", "NO ✗")
+)
+print("=== WILCOXON SIGNED-RANK TEST (MSE) ===")
+print(wilcox_results)
+
+# Best model by metric
+metrics_names <- c("MSE", "RMSE", "MAE", "MAPE")
+best_model <- character(length(metrics_names))
+best_value <- numeric(length(metrics_names))
+
+for (j in seq_along(metrics_names)) {
+  metric <- metrics_names[j]
+  values <- c(mean(tree_df[, metric]), mean(bag_df[, metric]), mean(rf_df[, metric]))
+  best_idx <- which.min(values)
+  best_model[j] <- c("Tree", "Bagging", "RF")[best_idx]
+  best_value[j] <- round(values[best_idx], ifelse(metric == "MAPE", 1, 0))
+}
+
+best_results <- data.frame(
+  Metric = metrics_names,
+  Best_Model = best_model,
+  Best_Value = best_value
+)
+print("=== BEST MODEL BY METRIC ===")
+print(best_results)
