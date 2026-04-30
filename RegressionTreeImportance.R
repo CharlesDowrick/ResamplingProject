@@ -35,7 +35,7 @@ tree_top15 <- importance_df %>% head(15)
 # Print all features with importance > 0
 print(importance_df)
 
-# Create bar plot (red) showing percentage of total importance for top 15
+# Create bar plot showing percentage of total importance for top 15
 p_tree <- ggplot(tree_top15, aes(x = reorder(Feature, Percentage_of_Total), y = Percentage_of_Total)) +
   geom_bar(stat = "identity", fill = "#d62728", alpha = 0.8) +
   coord_flip() +
