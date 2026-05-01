@@ -1,6 +1,4 @@
-library(ggplot2)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 
 # Data from your bagging table
 bagging_results <- data.frame(
