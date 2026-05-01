@@ -15,7 +15,7 @@ n_predictors <- length(predictor_cols)
 n_folds <- 5
 n_samples <- 20
 n_trees_fixed <- 100
-mtry_values <- seq(4, 73, by = 3)  # mtry values to test
+mtry_values <- seq(1, 73, by = 3)  # mtry values to test
 
 # Create fold assignments
 fold_indices <- sample(rep(1:n_folds, length.out = nrow(ames)))
