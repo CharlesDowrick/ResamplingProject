@@ -24,4 +24,4 @@ This repository analyses the Ames Housing dataset as well as the relative perfor
 
 ## Requirements
 ```r
-install.packages(c("rpart", "randomForest", "ggplot2", "dplyr", "tidyr", "modeldata"))
+install.packages(c("rpart", "randomForest", "tidyverse", "modeldata"))
