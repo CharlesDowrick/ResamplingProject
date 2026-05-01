@@ -1,6 +1,4 @@
-library(ggplot2)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 
 # Pre-computed regression tree results
 tree_results <- data.frame(
