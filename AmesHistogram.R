@@ -1,5 +1,4 @@
-library(ggplot2)
-library(dplyr)
+library(tidyverse)
 library(modeldata)
 
 # Load data
@@ -24,8 +23,8 @@ print(stats)
 # Create histogram with mean and median lines
 ggplot(ames, aes(x = Sale_Price)) +
   geom_histogram(bins = 50, fill = "steelblue", color = "white", alpha = 0.8) +
-  geom_vline(aes(xintercept = stats$Mean, color = "Mean", linetype = "Mean"), size = 1) +
-  geom_vline(aes(xintercept = stats$Median, color = "Median", linetype = "Median"), size = 1) +
+  geom_vline(aes(xintercept = stats$Mean, color = "Mean", linetype = "Mean")) +
+  geom_vline(aes(xintercept = stats$Median, color = "Median", linetype = "Median")) +
   scale_color_manual(name = "Key", values = c("Mean" = "red", "Median" = "darkgreen")) +
   scale_linetype_manual(name = "Key", values = c("Mean" = "dashed", "Median" = "dotted")) +
   labs(title = "Distribution of Sale Prices", 
