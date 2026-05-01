@@ -1,6 +1,4 @@
-library(ggplot2)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 
 # Pre-computed random forest results
 rf_results <- data.frame(
